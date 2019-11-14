@@ -17,6 +17,18 @@ TRY_LOOP="20"
 : "${AIRFLOW__CORE__FERNET_KEY:=${FERNET_KEY:=$(python -c "from cryptography.fernet import Fernet; FERNET_KEY = Fernet.generate_key().decode(); print(FERNET_KEY)")}}"
 : "${AIRFLOW__CORE__EXECUTOR:=${EXECUTOR:-Sequential}Executor}"
 
+echo "export AIRFLOW_HOME=${AIRFLOW_HOME}" >> ~/.bashrc
+# might change later in this script
+#export AIRFLOW__CELERY__BROKER_URL
+# echo "export AIRFLOW__CELERY__BROKER_URL=${AIRFLOW__CELERY__BROKER_URL}" >> ~/.bashrc
+echo "export AIRFLOW__CELERY__RESULT_BACKEND=${AIRFLOW__CELERY__RESULT_BACKEND}" >> ~/.bashrc
+echo "export AIRFLOW__CORE__EXECUTOR=${AIRFLOW__CORE__EXECUTOR}" >> ~/.bashrc
+echo "export AIRFLOW__CORE__FERNET_KEY=${AIRFLOW__CORE__FERNET_KEY}" >> ~/.bashrc
+# might change later in this script
+#export AIRFLOW__CORE__LOAD_EXAMPLES
+# echo "export AIRFLOW__CORE__LOAD_EXAMPLES=${AIRFLOW__CORE__LOAD_EXAMPLES}" >> ~/.bashrc
+echo "export AIRFLOW__CORE__SQL_ALCHEMY_CONN=${AIRFLOW__CORE__SQL_ALCHEMY_CONN}" >> ~/.bashrc
+
 export \
   AIRFLOW_HOME \
   AIRFLOW__CELERY__BROKER_URL \
@@ -26,12 +38,14 @@ export \
   AIRFLOW__CORE__LOAD_EXAMPLES \
   AIRFLOW__CORE__SQL_ALCHEMY_CONN \
 
-
-# Load DAGs examples (default: Yes)
+# Load DAGs exemples (default: Yes)
 if [[ -z "$AIRFLOW__CORE__LOAD_EXAMPLES" && "${LOAD_EX:=n}" == n ]]
 then
   AIRFLOW__CORE__LOAD_EXAMPLES=False
 fi
+# echo "export AIRFLOW__CORE__LOAD_EXAMPLES=${AIRFLOW__CORE__LOAD_EXAMPLES}" >> ~/.bashrc
+
+# source ~/.bashrc
 
 # Install custom python package if requirements.txt is present
 if [ -e "/requirements.txt" ]; then
@@ -43,6 +57,7 @@ if [ -n "$REDIS_PASSWORD" ]; then
 else
     REDIS_PREFIX=
 fi
+echo "export REDIS_PREFIX=${REDIS_PREFIX}" >> ~/.bashrc
 
 wait_for_port() {
   local name="$1" host="$2" port="$3"
@@ -60,14 +75,19 @@ wait_for_port() {
 
 if [ "$AIRFLOW__CORE__EXECUTOR" != "SequentialExecutor" ]; then
   AIRFLOW__CORE__SQL_ALCHEMY_CONN="postgresql+psycopg2://$POSTGRES_USER:$POSTGRES_PASSWORD@$POSTGRES_HOST:$POSTGRES_PORT/$POSTGRES_DB"
+  echo "export AIRFLOW__CORE__SQL_ALCHEMY_CONN=${AIRFLOW__CORE__SQL_ALCHEMY_CONN}" >> ~/.bashrc
   AIRFLOW__CELERY__RESULT_BACKEND="db+postgresql://$POSTGRES_USER:$POSTGRES_PASSWORD@$POSTGRES_HOST:$POSTGRES_PORT/$POSTGRES_DB"
   wait_for_port "Postgres" "$POSTGRES_HOST" "$POSTGRES_PORT"
+  echo "export AIRFLOW__CELERY__RESULT_BACKEND=${AIRFLOW__CELERY__RESULT_BACKEND}" >> ~/.bashrc
 fi
 
 if [ "$AIRFLOW__CORE__EXECUTOR" = "CeleryExecutor" ]; then
   AIRFLOW__CELERY__BROKER_URL="redis://$REDIS_PREFIX$REDIS_HOST:$REDIS_PORT/1"
   wait_for_port "Redis" "$REDIS_HOST" "$REDIS_PORT"
 fi
+echo "export AIRFLOW__CELERY__BROKER_URL=${AIRFLOW__CELERY__BROKER_URL}" >> ~/.bashrc
+
+#source ~/.bashrc
 
 case "$1" in
   webserver)
@@ -76,10 +96,14 @@ case "$1" in
       # With the "Local" and "Sequential" executors it should all run in one container.
       airflow scheduler &
     fi
+
+    if [ -e "/variables_pro.json" ]; then
+      airflow variables --import /variables_pro.json
+    fi
     exec airflow webserver
     ;;
   worker|scheduler)
-    # Give the webserver time to run initdb.
+    # To give the webserver time to run initdb.
     sleep 10
     exec airflow "$@"
     ;;
