@@ -96,10 +96,16 @@ case "$1" in
       # With the "Local" and "Sequential" executors it should all run in one container.
       airflow scheduler &
     fi
-
+      #Importing variables 
     if [ -e "/variables_pro.json" ]; then
       airflow variables --import /variables_pro.json
     fi
+      #Importing schemas variables
+    if [ -e "/schemas.json" ]; then
+      airflow variables --import /schemas.json
+    fi
+      # Create google cloud connection
+    airflow connections --add --conn_id=bigquery_dev --conn_type=google_cloud_platform --conn_extra='{ "extra__google_cloud_platform__key_path":"/usr/local/airflow/dags/config/gc.json", "extra__google_cloud_platform__project": "st-etl-2019", "extra__google_cloud_platform__scope": "https://www.googleapis.com/auth/cloud-platform"}'
     exec airflow webserver
     ;;
   worker|scheduler)
