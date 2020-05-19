@@ -96,12 +96,22 @@ case "$1" in
       # With the "Local" and "Sequential" executors it should all run in one container.
       airflow scheduler &
     fi
-      #Importing variables 
-    if [ -e "/variables_pro.json" ]; then
-      airflow variables --import /variables_pro.json
+      #Importing variables
+    echo "Importing variables" 
+    if [[ "$ENVIRONMENT" = "test" ]]; then
+      echo "ambiente test"
+      if [ -e "${AIRFLOW_HOME}/variables_test.json" ]; then
+        echo "existen vars test"
+        airflow variables --import /variables_test.json
+      fi
+    else
+      echo "no"
+      if [ -e "vars/variables_pro.json" ]; then
+        airflow variables --import /variables_pro.json
+      fi
     fi
-      #Importing schemas variables
-    if [ -e "/schemas.json" ]; then
+    #Importing schemas variables
+    if [ -e "vars/schemas.json" ]; then
       airflow variables --import /schemas.json
     fi
       # Create google cloud connection
